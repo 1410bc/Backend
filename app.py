@@ -18,50 +18,77 @@ def home():
     return 'Hola mundo'
 
 @app.route('/create-event', methods=['POST'])
-def handle_create_event():
+def create_google_calendar_event():
+    """Recibe parámetros de una solicitud POST y crea un evento en Google Calendar."""
     try:
-        event_link = create_event()
-        return jsonify({'status': 'success', 'event_link': event_link})
+        # Extraer datos del cuerpo de la solicitud
+        data = request.get_json()
+        event_title = data.get('title')
+        event_description = data.get('description')
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+
+        if not all([event_title, start_time, end_time]):
+            return jsonify({"error": "Los campos 'title', 'start_time' y 'end_time' son obligatorios"}), 400
+
+        # Autenticar con Google Calendar
+        creds = authenticate_google_calendar()
+        service = build('calendar', 'v3', credentials=creds)
+
+        # Definir el evento
+        event = {
+            'summary': event_title,
+            'description': event_description,
+            'start': {
+                'dateTime': start_time,
+                'timeZone': 'America/Mexico_City',
+            },
+            'end': {
+                'dateTime': end_time,
+                'timeZone': 'America/Mexico_City',
+            },
+            'reminders': {
+                'useDefault': False,
+                'overrides': [
+                    {'method': 'email', 'minutes': 24 * 60},
+                    {'method': 'popup', 'minutes': 10},
+                ],
+            },
+        }
+
+        # Insertar el evento en Google Calendar
+        event_result = service.events().insert(calendarId='primary', body=event).execute()
+
+        return jsonify({
+            "message": "Evento creado exitosamente",
+            "event_link": event_result.get('htmlLink'),
+        }), 201
+
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
-def get_google_calendar_service():
-    # Cargar las credenciales desde la variable de entorno
-    credentials_info = json.loads(os.getenv('GOOGLE_CREDENTIALS'))
-    credentials = Credentials.from_service_account_info(
-        credentials_info, scopes=['https://www.googleapis.com/auth/calendar']
-    )
-    service = build('calendar', 'v3', credentials=credentials)
-    return service
-
-
-    event = {
-        'summary': 'Reunión de prueba',
-        'location': 'Virtual',
-        'description': 'Descripción del evento',
-        'start': {
-            'dateTime': '2024-11-21T10:00:00-06:00',
-            'timeZone': 'America/Mexico_City',
-        },
-        'end': {
-            'dateTime': '2024-11-21T11:00:00-06:00',
-            'timeZone': 'America/Mexico_City',
-        },
-        'attendees': [
-            {'email': 'correo@ejemplo.com'},
-        ],
-        'reminders': {
-            'useDefault': False,
-            'overrides': [
-                {'method': 'email', 'minutes': 24 * 60},
-                {'method': 'popup', 'minutes': 10},
-            ],
-        },
-    }
-
-    created_event = service.events().insert(calendarId='primary', body=event).execute()
-    return created_event['htmlLink']
-
+        return jsonify({"error": str(e)}), 500
+    
+def authenticate_google_calendar():
+    """Autenticación para acceder a la API de Google Calendar."""
+    creds = None
+    # Verifica si existe un token de autenticación guardado
+    if os.path.exists('token.pickle'):
+        with open('token.pickle', 'rb') as token:
+            creds = pickle.load(token)
+    
+    # Si no hay credenciales válidas, se procede a autenticarse
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', SCOPES
+            )
+            creds = flow.run_local_server(port=8080)
+        
+        # Guarda las credenciales para futuras ejecuciones
+        with open('token.pickle', 'wb') as token:
+            pickle.dump(creds, token)
+    return creds
 
 if __name__ == '__main__':
     app.run(debug=True)
