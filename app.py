@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 import datetime
 import os
 import json
-from openai import OpenAI
 from google.oauth2.service_account import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
