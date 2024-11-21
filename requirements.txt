@@ -1,0 +1,4 @@
+Flaskcls
+Flask-Mail
+python-dotenv
+gunicorn
