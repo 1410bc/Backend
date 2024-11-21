@@ -27,29 +27,13 @@ def handle_create_event():
 
 def get_google_calendar_service():
     # Cargar las credenciales desde la variable de entorno
-    credentials_info = json.loads(os.getenv('GOOGLE_OAUTH_CREDENTIALS'))
-    flow = Flow.from_client_config(
-        credentials_info,
-        scopes=['https://www.googleapis.com/auth/calendar']
+    credentials_info = json.loads(os.getenv('GOOGLE_CREDENTIALS'))
+    credentials = Credentials.from_service_account_info(
+        credentials_info, scopes=['https://www.googleapis.com/auth/calendar']
     )
-    # Configurar la redirección para obtener el token
-    flow.redirect_uri = 'https://backend-my90.onrender.com/oauth2callback'
-
-    # Generar la URL para autenticación
-    authorization_url, _ = flow.authorization_url(prompt='consent')
-    print(f"Visita esta URL para autorizar: {authorization_url}")
-
-    # Intercambiar el código por un token (requiere que el usuario copie el código manualmente)
-    authorization_response = input("Ingresa la URL después de autorizar: ")
-    flow.fetch_token(authorization_response=authorization_response)
-
-    # Crear el servicio de Google Calendar
-    credentials = flow.credentials
     service = build('calendar', 'v3', credentials=credentials)
     return service
 
-def create_event():
-    service = get_google_calendar_service()
 
     event = {
         'summary': 'Reunión de prueba',
