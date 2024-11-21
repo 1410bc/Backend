@@ -15,7 +15,7 @@ SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 @app.route('/', methods=['GET'])
 def home():
-    return 'Hola Andy, este es mi servidor de Render'
+    return jsonify({"message": "Servidor en Render funcionando correctamente"}), 200
 
 @app.route('/create-event', methods=['POST'])
 def create_google_calendar_event():
